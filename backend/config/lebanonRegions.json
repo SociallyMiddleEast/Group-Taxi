@@ -1,8 +1,0 @@
-{
-  "Beirut": ["Beirut Central District", "Hamra", "Achrafieh", "Verdun", "Ras Beirut", "Mazraa"],
-  "Mount Lebanon": ["Jounieh", "Baabda", "Aley", "Chouf", "Metn", "Kesrouan", "Byblos (Jbeil)", "Dbayeh", "Antelias", "Zouk Mosbeh"],
-  "North Lebanon": ["Tripoli", "Zgharta", "Koura", "Batroun", "Bcharre", "Akkar", "Minieh-Danniyeh"],
-  "Bekaa": ["Zahle", "Chtaura", "Baalbek", "Hermel", "West Bekaa", "Rachaya"],
-  "South Lebanon": ["Sidon (Saida)", "Tyre (Sour)", "Jezzine", "Nabatieh", "Bint Jbeil", "Marjeyoun", "Hasbaya"],
-  "Airport / Border": ["Rafic Hariri International Airport", "Masnaa Border Crossing", "Aboudieh Border Crossing (Syria)"]
-}

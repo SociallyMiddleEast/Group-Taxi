@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GroupTaxi</title>
+<style>
+  :root{
+    --ink:#15181d; --panel:#1e222a; --paper:#f6f4ef;
+    --brass:#c9a15a; --brass-dim:#8a713d; --muted:#8b8f98; --line:#2c313b;
+    --good:#5fae72; --bad:#d96a6a; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--ink); color:var(--paper); font-family:'Helvetica Neue', Arial, sans-serif; min-height:100vh;}
+  .wrap{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  header.app{padding:22px 20px 16px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; justify-content:space-between;}
+  .wordmark{font-size:22px; font-weight:800; letter-spacing:0.5px;}
+  .wordmark span{color:var(--brass);}
+  .tag{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px;}
+  main{flex:1; padding:20px; padding-bottom:100px;}
+  .screen{display:none;} .screen.active{display:block;}
+  label{display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:16px 0 6px;}
+  input, select{width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--paper); font-size:15px;}
+  input:focus, select:focus{outline:2px solid var(--brass); border-color:var(--brass);}
+  button.primary{width:100%; margin-top:22px; padding:14px; border:none; border-radius:10px; background:var(--brass); color:#1a1a1a; font-weight:700; font-size:15px; letter-spacing:0.3px; cursor:pointer;}
+  button.primary:active{background:var(--brass-dim);}
+  button.whatsapp{width:100%; margin-top:10px; padding:14px; border:none; border-radius:10px; background:#25D366; color:#0b1a0e; font-weight:700; font-size:15px; cursor:pointer;}
+  button.ghost{width:100%; margin-top:10px; padding:12px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--paper); font-size:14px; cursor:pointer;}
+  a.link{color:var(--brass); font-size:13px; display:inline-block; margin-top:16px; cursor:pointer; text-decoration:none;}
+  .msg{margin-top:14px; padding:10px 12px; border-radius:8px; font-size:13px;}
+  .msg.err{background:rgba(217,106,106,0.12); color:var(--bad); border:1px solid rgba(217,106,106,0.3);}
+  .msg.ok{background:rgba(95,174,114,0.12); color:var(--good); border:1px solid rgba(95,174,114,0.3);}
+  .stops-box{margin-top:10px; padding:12px 14px; background:var(--panel); border:1px dashed var(--line); border-radius:10px; font-size:13px; color:var(--muted);}
+  .stop-row{display:flex; align-items:center; gap:8px; padding:4px 0; color:var(--paper);}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--brass); flex-shrink:0;}
+  .receipt{background:var(--paper); color:#1a1a1a; border-radius:var(--radius); padding:20px; margin-top:16px;}
+  .receipt h2{margin:0 0 2px; font-size:24px;}
+  .receipt .r-total{display:flex; justify-content:space-between; font-weight:700; font-size:16px; border-top:1px solid #d8d4c9; border-bottom:1px solid #d8d4c9; padding:10px 0; margin:14px 0;}
+  .receipt .r-row{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#4a4a4a;}
+  .receipt .r-label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#8a8a8a; margin-top:14px;}
+  nav.bottom{position:fixed; bottom:0; left:0; right:0; background:var(--panel); border-top:1px solid var(--line); display:flex; max-width:480px; margin:0 auto;}
+  nav.bottom button{flex:1; background:none; border:none; color:var(--muted); padding:14px 0; font-size:12px; cursor:pointer;}
+  nav.bottom button.active{color:var(--brass); font-weight:700;}
+  .field-row{display:flex; gap:10px;} .field-row > div{flex:1;}
+  .route-item{padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .route-item b{color:var(--brass);}
+  h3.section{font-size:14px; letter-spacing:0.5px; color:var(--brass); text-transform:uppercase; margin:0 0 12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div>
+      <div class="wordmark">GROUP<span>TAXI</span></div>
+      <div class="tag" id="userTag">Not signed in</div>
+    </div>
+    <div class="tag" id="dateTag"></div>
+  </header>
+
+  <main>
+    <!-- LOGIN -->
+    <section class="screen active" id="screen-login">
+      <h3 class="section">Sign in</h3>
+      <label>Username</label>
+      <input id="loginUsername" type="text" autocomplete="username">
+      <label>Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+      <button class="primary" onclick="doLogin()">Sign in</button>
+      <a class="link" onclick="showScreen('forgot')">Forgot password?</a>
+      <div id="loginMsg"></div>
+    </section>
+
+    <!-- FORGOT PASSWORD -->
+    <section class="screen" id="screen-forgot">
+      <h3 class="section">Reset password</h3>
+      <label>Username</label>
+      <input id="forgotUsername" type="text">
+      <button class="whatsapp" onclick="sendOtp()">Get reset code via WhatsApp</button>
+      <div id="forgotMsg"></div>
+
+      <div id="resetBlock" style="display:none; margin-top:24px;">
+        <label>Code (from the WhatsApp message just sent)</label>
+        <input id="otpCode" type="text" inputmode="numeric">
+        <label>New password</label>
+        <input id="newPassword" type="password">
+        <button class="primary" onclick="resetPassword()">Set new password</button>
+      </div>
+      <a class="link" onclick="showScreen('login')">Back to sign in</a>
+    </section>
+
+    <!-- NEW RIDE -->
+    <section class="screen" id="screen-ride">
+      <h3 class="section">New ride</h3>
+      <label>Passenger name</label>
+      <input id="passengerName" type="text">
+
+      <label>From</label>
+      <select id="fromRegion" onchange="loadAutoStops()"></select>
+
+      <label>To</label>
+      <select id="toRegion" onchange="loadAutoStops()"></select>
+
+      <div class="stops-box" id="stopsBox">Select a From and To to calculate stops.</div>
+
+      <div class="field-row">
+        <div><label>Price (USD)</label><input id="price" type="number" step="1"></div>
+        <div><label>Payment</label>
+          <select id="paymentMethod"><option>Cash</option><option>Card</option><option>Prepaid</option></select>
+        </div>
+      </div>
+
+      <label>Driver name</label>
+      <input id="driverName" type="text">
+      <div class="field-row">
+        <div><label>Plate number</label><input id="plate" type="text"></div>
+        <div><label>Driver phone</label><input id="driverPhone" type="text" placeholder="70 149 111"></div>
+      </div>
+      <div class="field-row">
+        <div><label>Car model</label><input id="carModel" type="text"></div>
+        <div><label>Car color</label><input id="carColor" type="text"></div>
+      </div>
+
+      <label>Passenger's WhatsApp number (for the receipt)</label>
+      <input id="passengerWhatsapp" type="text" placeholder="70 149 111">
+
+      <button class="primary" onclick="createRide()">Save ride & preview receipt</button>
+      <div id="rideMsg"></div>
+    </section>
+
+    <!-- RECEIPT -->
+    <section class="screen" id="screen-receipt">
+      <h3 class="section">Receipt</h3>
+      <div class="receipt" id="receiptCard"></div>
+      <button class="whatsapp" onclick="sendReceiptWhatsapp()">Send receipt on WhatsApp</button>
+      <button class="ghost" onclick="showScreen('ride')">New ride</button>
+    </section>
+
+    <!-- SETTINGS (Miguel only) -->
+    <section class="screen" id="screen-settings">
+      <h3 class="section">Route settings</h3>
+      <label>From region/city</label>
+      <select id="settingsFrom"></select>
+      <label>To region/city</label>
+      <select id="settingsTo"></select>
+      <label>Stop 1</label><input id="stop1" type="text">
+      <label>Stop 2</label><input id="stop2" type="text">
+      <label>Stop 3</label><input id="stop3" type="text">
+      <label>Stop 4</label><input id="stop4" type="text">
+      <button class="primary" onclick="saveRoute()">Save route</button>
+      <div id="settingsMsg"></div>
+
+      <h3 class="section" style="margin-top:28px;">Configured routes</h3>
+      <div id="routesList"></div>
+    </section>
+  </main>
+
+  <nav class="bottom" id="bottomNav" style="display:none;">
+    <button onclick="showScreen('ride')" data-nav="ride">New ride</button>
+    <button onclick="showScreen('settings')" data-nav="settings" id="navSettings" style="display:none;">Settings</button>
+    <button onclick="logout()">Sign out</button>
+  </nav>
+</div>
+
+<script>
+// Paste your deployed Google Apps Script Web App URL here (see README step 4).
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+
+let state = { token: null, username: null, role: null, regions: {}, autoStops: [], currentRide: null };
+
+document.getElementById('dateTag').textContent = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+
+// Restore session if still valid
+const savedToken = localStorage.getItem('gt_token');
+const savedUser = localStorage.getItem('gt_username');
+if (savedToken) { state.token = savedToken; state.username = savedUser; }
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('nav.bottom button').forEach(b => b.classList.remove('active'));
+  const navBtn = document.querySelector(`[data-nav="${name}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  if (name === 'settings') loadRoutesList();
+}
+
+// Sends action+payload to the Apps Script backend. Uses text/plain to avoid a CORS
+// preflight request, which Apps Script cannot respond to.
+async function callApi(action, payload = {}){
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, token: state.token, payload }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Request failed');
+  return json.data;
+}
+
+function waLink(number, text){
+  let digits = String(number).replace(/[^\d]/g, '');
+  if (!digits.startsWith('961')) digits = '961' + (digits.startsWith('0') ? digits.slice(1) : digits);
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
+async function doLogin(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const msg = document.getElementById('loginMsg');
+  msg.innerHTML = '';
+  try{
+    const data = await callApi('login', { username, password });
+    state.token = data.token; state.username = data.username; state.role = data.role;
+    localStorage.setItem('gt_token', data.token); localStorage.setItem('gt_username', data.username);
+    afterLogin(data.username);
+  }catch(e){ msg.innerHTML = `<div class="msg err">${e.message}</div>`; }
+}
+
+function afterLogin(username){
+  document.getElementById('userTag').textContent = 'Signed in as ' + username;
+  document.getElementById('bottomNav').style.display = 'flex';
+  document.getElementById('navSettings').style.display = (username === 'Miguel') ? 'block' : 'none';
+  loadRegions().then(() => showScreen('ride'));
+}
+
+function logout(){
+  state = { token: null, username: null, role: null, regions: {}, autoStops: [], currentRide: null };
+  localStorage.removeItem('gt_token'); localStorage.removeItem('gt_username');
+  document.getElementById('userTag').textContent = 'Not signed in';
+  document.getElementById('bottomNav').style.display = 'none';
+  showScreen('login');
+}
+
+async function sendOtp(){
+  const username = document.getElementById('forgotUsername').value.trim();
+  const msg = document.getElementById('forgotMsg');
+  try{
+    const data = await callApi('forgotPassword', { username });
+    if (!data.found){
+      msg.innerHTML = `<div class="msg ok">If that account exists, a code has been prepared.</div>`;
+      return;
+    }
+    const text = `GroupTaxi password reset code: ${data.code}\nThis code expires in 10 minutes.`;
+    window.open(waLink(data.whatsappNumber, text), '_blank');
+    msg.innerHTML = `<div class="msg ok">WhatsApp opened with the code, addressed to the number on file for this account. Tap send.</div>`;
+    document.getElementById('resetBlock').style.display = 'block';
+  }catch(e){ msg.innerHTML = `<div class="msg err">${e.message}</div>`; }
+}
+
+async function resetPassword(){
+  const username = document.getElementById('forgotUsername').value.trim();
+  const code = document.getElementById('otpCode').value.trim();
+  const newPassword = document.getElementById('newPassword').value;
+  const msg = document.getElementById('forgotMsg');
+  try{
+    const data = await callApi('resetPassword', { username, code, newPassword });
+    msg.innerHTML = `<div class="msg ok">${data.message}</div>`;
+    setTimeout(() => showScreen('login'), 1200);
+  }catch(e){ msg.innerHTML = `<div class="msg err">${e.message}</div>`; }
+}
+
+async function loadRegions(){
+  const data = await callApi('getRegions');
+  state.regions = data.regions;
+  const options = ['<option value="">Select...</option>'];
+  for (const [region, cities] of Object.entries(state.regions)){
+    options.push(`<optgroup label="${region}">`);
+    options.push(`<option value="${region}">${region} (any)</option>`);
+    cities.forEach(c => options.push(`<option value="${c}">${c}</option>`));
+    options.push(`</optgroup>`);
+  }
+  const html = options.join('');
+  ['fromRegion','toRegion','settingsFrom','settingsTo'].forEach(id => { document.getElementById(id).innerHTML = html; });
+}
+
+async function loadAutoStops(){
+  const from = document.getElementById('fromRegion').value;
+  const to = document.getElementById('toRegion').value;
+  const box = document.getElementById('stopsBox');
+  if (!from || !to){ box.textContent = 'Select a From and To to calculate stops.'; return; }
+  try{
+    const data = await callApi('getAutoStops', { from, to });
+    state.autoStops = data.stops;
+    box.innerHTML = data.stops.length
+      ? data.stops.map(s => `<div class="stop-row"><span class="dot"></span>${s}</div>`).join('')
+      : 'No stops configured for this route yet (admin can add them in Settings).';
+  }catch(e){ box.textContent = 'Could not calculate stops.'; }
+}
+
+async function createRide(){
+  const msg = document.getElementById('rideMsg');
+  const passengerWhatsapp = document.getElementById('passengerWhatsapp').value.trim();
+  const ride = {
+    passengerName: document.getElementById('passengerName').value.trim(),
+    from: document.getElementById('fromRegion').value,
+    to: document.getElementById('toRegion').value,
+    stops: state.autoStops || [],
+    price: document.getElementById('price').value,
+    paymentMethod: document.getElementById('paymentMethod').value,
+    driverName: document.getElementById('driverName').value.trim(),
+    plate: document.getElementById('plate').value.trim(),
+    driverPhone: document.getElementById('driverPhone').value.trim(),
+    carModel: document.getElementById('carModel').value.trim(),
+    carColor: document.getElementById('carColor').value.trim(),
+  };
+  try{
+    const data = await callApi('createRide', ride);
+    state.currentRide = data.ride;
+    state.currentRide._passengerWhatsapp = passengerWhatsapp;
+    renderReceipt(data.ride);
+    showScreen('receipt');
+  }catch(e){ msg.innerHTML = `<div class="msg err">${e.message}</div>`; }
+}
+
+function renderReceipt(ride){
+  document.getElementById('receiptCard').innerHTML = `
+    <h2>GROUP TAXI</h2>
+    <div style="font-size:12px; color:#8a8a8a;">${ride.date}</div>
+    <div style="margin-top:10px; font-size:14px;">Ride for ${ride.passengerName}</div>
+    <div class="r-total"><span>Total</span><span>${ride.price} USD</span></div>
+    <div class="r-row"><span>From</span><span>${ride.from}</span></div>
+    <div class="r-row"><span>To</span><span>${ride.to}</span></div>
+    ${ride.stops.length ? `<div class="r-row"><span>Stops</span><span>${ride.stops.join(', ')}</span></div>` : ''}
+    <div class="r-label">Ride info</div>
+    <div class="r-row"><span>Driver</span><span>${ride.driverName || '-'}</span></div>
+    <div class="r-row"><span>Plate</span><span>${ride.plate || '-'}</span></div>
+    <div class="r-row"><span>Car</span><span>${ride.carModel || '-'} ${ride.carColor ? '('+ride.carColor+')' : ''}</span></div>
+    <div class="r-row"><span>Driver phone</span><span>${ride.driverPhone || '-'}</span></div>
+    <div class="r-label">Payment</div>
+    <div class="r-row"><span>${ride.paymentMethod}</span><span></span></div>
+  `;
+}
+
+function sendReceiptWhatsapp(){
+  const ride = state.currentRide;
+  const number = ride._passengerWhatsapp;
+  if (!number){ alert('No passenger WhatsApp number was entered for this ride.'); return; }
+  const text = [
+    'GROUP TAXI - Ride Receipt', ride.date, '',
+    `Passenger: ${ride.passengerName}`, `From: ${ride.from}`, `To: ${ride.to}`,
+    ride.stops.length ? `Stops: ${ride.stops.join(', ')}` : null, '',
+    `Total: ${ride.price} USD`, '',
+    `Driver: ${ride.driverName}`, `Plate: ${ride.plate}`,
+    `Car: ${ride.carModel} (${ride.carColor})`, `Driver phone: ${ride.driverPhone}`, '',
+    `Payment: ${ride.paymentMethod}`, '', 'Thank you for riding with GroupTaxi.',
+  ].filter(Boolean).join('\n');
+  window.open(waLink(number, text), '_blank');
+}
+
+async function saveRoute(){
+  const msg = document.getElementById('settingsMsg');
+  const from = document.getElementById('settingsFrom').value;
+  const to = document.getElementById('settingsTo').value;
+  const stops = [document.getElementById('stop1').value, document.getElementById('stop2').value,
+                 document.getElementById('stop3').value, document.getElementById('stop4').value]
+                 .map(s => s.trim()).filter(Boolean);
+  try{
+    const data = await callApi('saveRoute', { from, to, stops });
+    msg.innerHTML = `<div class="msg ok">${data.message}</div>`;
+    loadRoutesList();
+  }catch(e){ msg.innerHTML = `<div class="msg err">${e.message}</div>`; }
+}
+
+async function loadRoutesList(){
+  try{
+    const data = await callApi('getRoutes');
+    document.getElementById('routesList').innerHTML = data.routes.map(r =>
+      `<div class="route-item"><b>${r.from} → ${r.to}</b><br>${r.stops.join(', ') || 'No stops set'}</div>`
+    ).join('') || '<div class="route-item">No routes configured yet.</div>';
+  }catch(e){ /* silent - not admin or not yet loaded */ }
+}
+
+// If a saved session exists, jump straight past login.
+if (state.token) afterLogin(state.username);
+</script>
+</body>
+</html>
